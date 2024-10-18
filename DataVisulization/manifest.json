@@ -1,0 +1,16 @@
+  {
+      "fileLocations": [
+          {
+              "URIs": [
+                  # replace this URI with the copied s3 URI of your file
+                  "s3://quicksight-project-name/netflix_titles.csv"
+              ]
+          }
+      ],
+      "globalUploadSettings": {
+          "format": "CSV",
+          "delimiter": ",",
+          "textqualifier": "\"",
+          "containsHeader": "true"
+      }
+  }
