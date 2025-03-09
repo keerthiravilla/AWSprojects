@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Voice</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        /* General Styles */
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(to right, #667eea, #764ba2); /* Subtle gradient */
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        /* Container Box */
+        .container {
+            width: 420px;
+            background: rgba(255, 255, 255, 0.15);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0px 8px 20px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
+
+        /* Title Section */
+        .title {
+            font-size: 30px;
+            font-weight: bold;
+            color: black;
+            text-transform: uppercase;
+        }
+        .subtitle {
+            font-size: 14px;
+            font-weight: 300;
+            margin-bottom: 20px;
+            opacity: 0.8;
+        }
+
+        /* File Upload Button */
+        .file-upload {
+            display: block;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.3s;
+            border: 2px dashed rgba(255, 255, 255, 0.4);
+            margin-bottom: 15px;
+        }
+        .file-upload:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        input[type="file"] {
+            display: none;
+        }
+
+        /* Status Message */
+        .loading {
+            font-size: 14px;
+            opacity: 0.8;
+            margin-top: 10px;
+        }
+
+        /* Audio Player */
+        audio {
+            width: 100%;
+            margin-top: 15px;
+            display: none;
+        }
+
+        /* Button */
+        .btn {
+            background: #ff8c42;
+            border: none;
+            padding: 12px;
+            width: 100%;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            transition: 0.3s;
+            margin-top: 10px;
+        }
+        .btn:hover {
+            background: #ff6a00;
+        }
+
+        /* Modal Popup */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            width: 80%;
+            max-width: 400px;
+            text-align: center;
+            color: black;
+        }
+
+        .modal-content h2 {
+            margin-top: 0;
+        }
+
+        .close-btn {
+            background: #ff4d4d;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            margin-top: 15px;
+            border-radius: 5px;
+        }
+
+        .close-btn:hover {
+            background: #cc0000;
+        }
+    </style>
+
+    <script>
+        function uploadFile() {
+            const fileInput = document.getElementById("fileInput");
+            const file = fileInput.files[0];
+            const loadingText = document.getElementById("loadingText");
+            const audioPlayer = document.getElementById("audioPlayer");
+            const audioSource = document.getElementById("audioSource");
+            const modal = document.getElementById("transcriptionModal");
+            const modalText = document.getElementById("transcribedText");
+
+            if (!file) {
+                alert("Please select a file.");
+                return;
+            }
+
+            loadingText.innerText = "Uploading and processing...";
+            loadingText.style.display = "block";
+            modal.style.display = "none"; // Hide modal initially
+            audioPlayer.style.display = "none"; // Hide audio initially
+
+            const formData = new FormData();
+            formData.append("file", file);
+
+            fetch("http://3.108.237.67:8080/upload", {
+                method: "POST",
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message.includes("successfully")) {
+                    // Wait and fetch processed file
+                    setTimeout(() => {
+                        fetch(`http://3.108.237.67:8080/get_result?file_name=${file.name}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.file_url) {
+                                // If it's a TTS file, play audio
+                                audioSource.src = data.file_url;
+                                audioPlayer.style.display = "block";
+                                audioPlayer.load();
+                                loadingText.innerText = "Audio is ready!";
+                            } else if (data.transcribed_text) {
+                                // If it's a transcription, show modal popup
+                                modalText.innerText = data.transcribed_text;
+                                modal.style.display = "flex";
+                                loadingText.innerText = "Transcription complete.";
+                            } else {
+                                loadingText.innerText = "Processing failed. Try again.";
+                            }
+                        })
+                        .catch(() => {
+                            loadingText.innerText = "Error fetching result.";
+                        });
+                    }, 5000);
+                } else {
+                    loadingText.innerText = "Upload failed.";
+                }
+            })
+            .catch(() => {
+                loadingText.innerText = "Error uploading.";
+            });
+        }
+
+        function closeModal() {
+            document.getElementById("transcriptionModal").style.display = "none";
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <div class="title">Smart Voice</div>
+        <div class="subtitle">AI Text-to-Speech & Speech-to-Text Converter</div>
+
+        <!-- File Upload Section -->
+        <label class="file-upload">
+            Click to upload file
+            <input type="file" id="fileInput" onchange="uploadFile()">
+        </label>
+
+        <p id="loadingText" class="loading"></p>
+
+        <!-- Audio Player (Hidden initially) -->
+        <audio id="audioPlayer" controls>
+            <source id="audioSource" type="audio/mp3">
+            Your browser does not support the audio element.
+        </audio>
+    </div>
+
+    <!-- Transcription Popup Modal -->
+    <div id="transcriptionModal" class="modal">
+        <div class="modal-content">
+            <h2>Transcribed Data</h2>
+            <p id="transcribedText"></p>
+            <button class="close-btn" onclick="closeModal()">Close</button>
+        </div>
+    </div>
+</body>
+</html>
